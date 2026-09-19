@@ -17,7 +17,7 @@ The environment contains:
 
 The peerings between: the hub and the two local spokes, and between the spokes are intentionally missing. This is the initial fault of the lab.
 
-![Azure architecture](../docs/hub-spoke-missing-peerings.png)
+![Azure architecture](./diagram/architecture.png)
 
 ## Troubleshooting scenarios
 1. VM1 cannot communicate with VM2 using their private IP addresses.

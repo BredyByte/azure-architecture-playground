@@ -4,7 +4,7 @@ Terraform conversion of the supplied Azure ARM template for a networking trouble
 
 ## Scenario
 
-![Azure architecture](../docs/hub-spoke-template.png)
+![Azure architecture](./diagram/architecture.png)
 
 ## Troubleshooting scenarios
 1.

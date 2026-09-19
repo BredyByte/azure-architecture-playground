@@ -6,7 +6,7 @@ This lab deploys an Azure Application Gateway with WAF enabled in front of a pri
 
 The objective is to send legitimate and malicious HTTP requests and use Application Gateway and WAF logs to determine whether the requests passed through the WAF, were allowed, or were blocked.
 
-![Azure architecture](../docs/app-service-gateway-waf.png)
+![Azure architecture](./diagram/architecture.png)
 
 ## Troubleshooting scenarios
 
