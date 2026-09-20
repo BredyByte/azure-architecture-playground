@@ -1,3 +1,5 @@
+.DS_Store
+
 # Terraform working directories
 .terraform/
 
