@@ -46,10 +46,22 @@ Both should return the Azure Firewall public IP.
 
 ## Part 2 — VNet-to-VNet VPN Gateway
 
-**Goal:** connect Italy North to the hub through Virtual Network Gateways and examine the resulting traffic paths.
+The Italy North VNet (`10.10.0.0/16`) connects to the hub through two route-based VPN gateways and a VNet-to-VNet VPN connection. BGP is enabled on both gateways. Italy is not peered with the hub or the spokes.
 
-### Architecture and configuration
+Gateway transit lets the spokes use the hub gateway through their existing peerings. On the VM1 and VM2 subnets, a UDR sends traffic for `10.10.0.0/16` to Azure Firewall (`10.1.1.4`). The Firewall Policy allows SSH from both VMs to VM3 (`10.10.0.4`). UDRs on the hub `GatewaySubnet` send return traffic for Spokes A and C through the Firewall.
 
+The resulting path is **VM1 or VM2 → Azure Firewall → hub VPN gateway → VPN tunnel → Italy VPN gateway → VM3**. Return traffic passes through the hub Firewall before reaching the originating spoke.
 
 ### Tests
 
+**VPN connection:** in **Virtual network gateways → Connections**, check that `conn-hub-to-italy` and `conn-italy-to-hub` show **Connected**.
+
+**Route to Italy:** in **Network Watcher → Next hop**, test VM1 with destination `10.10.0.4`. The expected next hop is **VirtualAppliance**, with IP address `10.1.1.4`. This confirms that the VM sends traffic to the Firewall before it reaches the VPN gateway.
+
+**End-to-end connectivity:** on VM1, open **Operations → Run command → RunShellScript** and run:
+
+```bash
+nc -vz -w 5 10.10.0.4 22
+```
+
+The command should report that port 22 on VM3 is reachable. This also confirms that the return path works.
