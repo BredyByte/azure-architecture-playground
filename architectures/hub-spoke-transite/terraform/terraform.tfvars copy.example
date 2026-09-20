@@ -11,3 +11,5 @@ vm_admin_username = "azureadmin"
 vm_admin_password = "AzureTroubleshooting123!"
 
 allowed_ssh_source = "*"
+
+vpn_shared_key = "EXECUTE THIS: openssl rand -hex 32"

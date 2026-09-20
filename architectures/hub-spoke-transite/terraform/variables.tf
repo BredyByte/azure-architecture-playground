@@ -44,3 +44,9 @@ variable "allowed_ssh_source" {
   type        = string
   default     = "*"
 }
+
+variable "vpn_shared_key" {
+  description = "Pre-shared key used by both VNet-to-VNet VPN connections."
+  type        = string
+  sensitive   = true
+}

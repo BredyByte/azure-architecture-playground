@@ -142,6 +142,21 @@ resource "azurerm_public_ip" "firewall" {
   sku                 = "Standard"
 }
 
+resource "azurerm_public_ip" "hub_gateway" {
+  name                = "pip-vpngw-hub-${local.name_suffix}"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.this.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+resource "azurerm_public_ip" "italy_gateway" {
+  name                = "pip-vpngw-italy-${local.name_suffix}"
+  location            = var.secondary_location
+  resource_group_name = azurerm_resource_group.this.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
 
 ############################################################
 # Virtual networks
@@ -200,6 +215,12 @@ resource "azurerm_subnet" "firewall" {
   address_prefixes     = ["10.1.1.0/26"]
 }
 
+resource "azurerm_subnet" "hub_gateway" {
+  name                 = "GatewaySubnet"
+  resource_group_name  = azurerm_resource_group.this.name
+  virtual_network_name = azurerm_virtual_network.hub.name
+  address_prefixes     = ["10.1.255.0/27"]
+}
 
 resource "azurerm_subnet" "spoke_a_1" {
   name                 = "subnetSpokeA1"
@@ -241,6 +262,13 @@ resource "azurerm_subnet" "italy_1" {
   resource_group_name  = azurerm_resource_group.this.name
   virtual_network_name = azurerm_virtual_network.italy.name
   address_prefixes     = ["10.10.0.0/24"]
+}
+
+resource "azurerm_subnet" "italy_gateway" {
+  name                 = "GatewaySubnet"
+  resource_group_name  = azurerm_resource_group.this.name
+  virtual_network_name = azurerm_virtual_network.italy.name
+  address_prefixes     = ["10.10.255.0/27"]
 }
 
 ############################################################
@@ -708,4 +736,90 @@ resource "azurerm_subnet_route_table_association" "spoke_a" {
 resource "azurerm_subnet_route_table_association" "spoke_c" {
   subnet_id      = azurerm_subnet.spoke_c_1.id
   route_table_id = azurerm_route_table.spoke_c.id
+}
+
+############################################################
+# VPN gateways
+############################################################
+
+resource "azurerm_virtual_network_gateway" "hub" {
+  name                = "vpngw-hub-${local.name_suffix}"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.this.name
+
+  type          = "Vpn"
+  vpn_type      = "RouteBased"
+  sku           = "VpnGw1AZ"
+  generation    = "Generation1"
+  active_active = false
+  bgp_enabled   = true
+
+  bgp_settings {
+    asn = 65010
+  }
+
+  ip_configuration {
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.hub_gateway.id
+    subnet_id                     = azurerm_subnet.hub_gateway.id
+  }
+}
+
+resource "azurerm_virtual_network_gateway" "italy" {
+  name                = "vpngw-italy-${local.name_suffix}"
+  location            = var.secondary_location
+  resource_group_name = azurerm_resource_group.this.name
+
+  type          = "Vpn"
+  vpn_type      = "RouteBased"
+  sku           = "VpnGw1AZ"
+  generation    = "Generation1"
+  active_active = false
+  bgp_enabled   = true
+
+  bgp_settings {
+    asn = 65020
+  }
+
+  ip_configuration {
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.italy_gateway.id
+    subnet_id                     = azurerm_subnet.italy_gateway.id
+  }
+}
+
+############################################################
+# VNet-to-VNet VPN connections
+############################################################
+
+resource "azurerm_virtual_network_gateway_connection" "hub_to_italy" {
+  name                = "conn-hub-to-italy"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.this.name
+
+  type                            = "Vnet2Vnet"
+  virtual_network_gateway_id      = azurerm_virtual_network_gateway.hub.id
+  peer_virtual_network_gateway_id = azurerm_virtual_network_gateway.italy.id
+
+  shared_key                         = var.vpn_shared_key
+  bgp_enabled                        = true
+  dpd_timeout_seconds                = 45
+  connection_mode                    = "Default"
+  use_policy_based_traffic_selectors = false
+}
+
+resource "azurerm_virtual_network_gateway_connection" "italy_to_hub" {
+  name                = "conn-italy-to-hub"
+  location            = var.secondary_location
+  resource_group_name = azurerm_resource_group.this.name
+
+  type                            = "Vnet2Vnet"
+  virtual_network_gateway_id      = azurerm_virtual_network_gateway.italy.id
+  peer_virtual_network_gateway_id = azurerm_virtual_network_gateway.hub.id
+
+  shared_key                         = var.vpn_shared_key
+  bgp_enabled                        = true
+  dpd_timeout_seconds                = 45
+  connection_mode                    = "Default"
+  use_policy_based_traffic_selectors = false
 }
