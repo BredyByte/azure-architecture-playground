@@ -1,0 +1,13 @@
+# Copy this file to terraform.tfvars before deploying.
+
+subscription_id = "00000000-0000-0000-0000-000000000000"
+environment  = "dev"
+project_name = "project-name"
+
+location           = "spaincentral"
+secondary_location = "italynorth"
+
+vm_admin_username = "azureadmin"
+vm_admin_password = "AzureTroubleshooting123!"
+
+allowed_ssh_source = "*"
