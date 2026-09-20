@@ -148,6 +148,9 @@ resource "azurerm_public_ip" "hub_gateway" {
   resource_group_name = azurerm_resource_group.this.name
   allocation_method   = "Static"
   sku                 = "Standard"
+
+  # Explicitly define a single availability zone (e.g., Zone 1)
+  zones = ["1", "2", "3"]
 }
 
 resource "azurerm_public_ip" "italy_gateway" {
@@ -156,6 +159,9 @@ resource "azurerm_public_ip" "italy_gateway" {
   resource_group_name = azurerm_resource_group.this.name
   allocation_method   = "Static"
   sku                 = "Standard"
+
+  # Explicitly define a single availability zone (e.g., Zone 1)
+  zones = ["1", "2", "3"]
 }
 
 ############################################################
