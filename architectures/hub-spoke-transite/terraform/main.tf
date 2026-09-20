@@ -289,7 +289,7 @@ resource "azurerm_virtual_network_peering" "hub_to_spoke_a" {
   remote_virtual_network_id    = azurerm_virtual_network.spoke_a.id
   allow_virtual_network_access = true
   allow_forwarded_traffic      = true
-  allow_gateway_transit        = false
+  allow_gateway_transit        = true
   use_remote_gateways          = false
 }
 
@@ -301,7 +301,7 @@ resource "azurerm_virtual_network_peering" "hub_to_spoke_b" {
   remote_virtual_network_id    = azurerm_virtual_network.spoke_b.id
   allow_virtual_network_access = true
   allow_forwarded_traffic      = true
-  allow_gateway_transit        = false
+  allow_gateway_transit        = true
   use_remote_gateways          = false
 }
 
@@ -313,7 +313,7 @@ resource "azurerm_virtual_network_peering" "hub_to_spoke_c" {
   remote_virtual_network_id    = azurerm_virtual_network.spoke_c.id
   allow_virtual_network_access = true
   allow_forwarded_traffic      = true
-  allow_gateway_transit        = false
+  allow_gateway_transit        = true
   use_remote_gateways          = false
 }
 
@@ -326,7 +326,7 @@ resource "azurerm_virtual_network_peering" "spoke_a_to_hub" {
   allow_virtual_network_access = true
   allow_forwarded_traffic      = true
   allow_gateway_transit        = false
-  use_remote_gateways          = false
+  use_remote_gateways          = true
 }
 
 
@@ -339,7 +339,7 @@ resource "azurerm_virtual_network_peering" "spoke_b_to_hub" {
   allow_virtual_network_access = true
   allow_forwarded_traffic      = true
   allow_gateway_transit        = false
-  use_remote_gateways          = false
+  use_remote_gateways          = true
 }
 
 # VNet peering: spoke C <-> hub
@@ -351,7 +351,7 @@ resource "azurerm_virtual_network_peering" "spoke_c_to_hub" {
   allow_virtual_network_access = true
   allow_forwarded_traffic      = true
   allow_gateway_transit        = false
-  use_remote_gateways          = false
+  use_remote_gateways          = true
 }
 
 ############################################################
@@ -641,6 +641,28 @@ resource "azurerm_firewall_policy_rule_collection_group" "network" {
       destination_ports     = ["443"]
     }
   }
+
+  network_rule_collection {
+    name     = "allow-spokes-to-italy-ssh"
+    priority = 220
+    action   = "Allow"
+
+    rule {
+      name                  = "vm1-to-vm3-ssh"
+      protocols             = ["TCP"]
+      source_addresses      = ["10.2.0.4/32"]
+      destination_addresses = ["10.10.0.4/32"]
+      destination_ports     = ["22"]
+    }
+
+    rule {
+      name                  = "vm2-to-vm3-ssh"
+      protocols             = ["TCP"]
+      source_addresses      = ["10.4.0.4/32"]
+      destination_addresses = ["10.10.0.4/32"]
+      destination_ports     = ["22"]
+    }
+  }
 }
 
 
@@ -707,6 +729,13 @@ resource "azurerm_route_table" "spoke_a" {
     next_hop_type          = "VirtualAppliance"
     next_hop_in_ip_address = azurerm_firewall.hub.ip_configuration[0].private_ip_address
   }
+
+  route {
+    name                   = "to-italy-via-fw"
+    address_prefix         = "10.10.0.0/16"
+    next_hop_type          = "VirtualAppliance"
+    next_hop_in_ip_address = azurerm_firewall.hub.ip_configuration[0].private_ip_address
+  }
 }
 
 resource "azurerm_route_table" "spoke_c" {
@@ -728,6 +757,34 @@ resource "azurerm_route_table" "spoke_c" {
     next_hop_type          = "VirtualAppliance"
     next_hop_in_ip_address = azurerm_firewall.hub.ip_configuration[0].private_ip_address
   }
+
+  route {
+    name                   = "to-italy-via-fw"
+    address_prefix         = "10.10.0.0/16"
+    next_hop_type          = "VirtualAppliance"
+    next_hop_in_ip_address = azurerm_firewall.hub.ip_configuration[0].private_ip_address
+  }
+}
+
+resource "azurerm_route_table" "hub_gateway" {
+  name                          = "rt-hub-gateway-fw"
+  location                      = var.location
+  resource_group_name           = azurerm_resource_group.this.name
+  bgp_route_propagation_enabled = true
+
+  route {
+    name                   = "to-spoke-a-via-fw"
+    address_prefix         = "10.2.0.0/16"
+    next_hop_type          = "VirtualAppliance"
+    next_hop_in_ip_address = azurerm_firewall.hub.ip_configuration[0].private_ip_address
+  }
+
+  route {
+    name                   = "to-spoke-c-via-fw"
+    address_prefix         = "10.4.0.0/16"
+    next_hop_type          = "VirtualAppliance"
+    next_hop_in_ip_address = azurerm_firewall.hub.ip_configuration[0].private_ip_address
+  }
 }
 
 ############################################################
@@ -742,6 +799,11 @@ resource "azurerm_subnet_route_table_association" "spoke_a" {
 resource "azurerm_subnet_route_table_association" "spoke_c" {
   subnet_id      = azurerm_subnet.spoke_c_1.id
   route_table_id = azurerm_route_table.spoke_c.id
+}
+
+resource "azurerm_subnet_route_table_association" "hub_gateway" {
+  subnet_id      = azurerm_subnet.hub_gateway.id
+  route_table_id = azurerm_route_table.hub_gateway.id
 }
 
 ############################################################
